@@ -1,0 +1,33 @@
+safe_mode: true
+default_output_mode: stub
+dualsense:
+  # direct_hid is intended to coexist with games that read controller input.
+  backend: direct_hid
+  rumble_keepalive_hz: 120
+  # Used only by the optional pygame fallback backend.
+  name_contains: "Wireless Controller"
+  rumble_duration_ms: 120
+recorder:
+  max_packets: 100000
+  timeout_seconds: 3600
+f1_25:
+  host: 127.0.0.1
+  port: 20777
+  protocol: official_udp
+  udp_format: 2026
+  max_rpm: 15000
+forza_horizon_5:
+  host: 127.0.0.1
+  port: 5300
+  protocol: official_data_out
+assetto_corsa:
+  telemetry_mode: official_shared_memory
+  enabled: true
+  physics_map: "Local\\acpmf_physics"
+  max_rpm: 9000
+  max_steering_angle_rad: 0.6
+  wheel_slip_scale: 1.0
+  collision_damage_delta_threshold: 0.01
+mock:
+  sample_rate_hz: 30
+  seed: 25

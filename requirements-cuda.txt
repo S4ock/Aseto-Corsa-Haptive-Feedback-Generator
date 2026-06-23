@@ -1,0 +1,4 @@
+# Install after requirements.txt to enable CUDA training on an NVIDIA GPU.
+# The CUDA wheel index is intentionally separate so normal mock/stub installs stay lightweight.
+--index-url https://download.pytorch.org/whl/cu128
+torch>=2.7
