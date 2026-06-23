@@ -15,9 +15,10 @@ from src.main_recorder import record_session
 from src.main_runtime import run_runtime
 from src.training.dataset_builder import load_processed_sessions
 from src.training.model_io import load_artifacts
-from src.training.train_models import torch, train
+from src.training.train_models import train
 from src.utils.config_loader import RESOURCE_ROOT, ROOT, load_yaml
 from src.utils.safety import OFFLINE_WARNING
+from src.utils.session_names import next_session_name
 
 
 class HapticsDesktopApp:
@@ -34,7 +35,7 @@ class HapticsDesktopApp:
         self._record_haptics = None
         self._haptics_lock = threading.Lock()
         self.game = tk.StringVar(value="assetto_corsa")
-        self.session = tk.StringVar(value="session_001")
+        self.session = tk.StringVar(value=next_session_name("session_001"))
         default_model = RESOURCE_ROOT / "models" / "best_model.pkl"
         self.model = tk.StringVar(value=str(default_model if default_model.exists() else ROOT / "models" / "best_model.pkl"))
         self.state = tk.StringVar(value="Ready. Start an offline driving session, then choose an action.")
@@ -109,6 +110,7 @@ class HapticsDesktopApp:
         try:
             _, processed = record_session(game, session, stop_event=stop_event, on_telemetry=self._process_record_haptics)
             self.messages.put(f"Saved recording: {processed}")
+            self.messages.put(f"__NEXT_SESSION__:{next_session_name(session)}")
         except Exception as error:
             self.messages.put(f"ERROR: {error}")
         finally:
@@ -130,9 +132,6 @@ class HapticsDesktopApp:
     def _train_worker(self) -> None:
         try:
             config = load_yaml("training.yaml")
-            if torch is None:
-                config["models"] = [name for name in config.get("models", []) if name != "torch_deep_mlp"]
-                self.messages.put("CUDA PyTorch is not bundled; training the included CPU models instead.")
             metrics = train(load_processed_sessions(), config)
             self.messages.put(f"Training complete. Best model: {metrics['best_model']}; MAE: {metrics['mae']:.4f}")
         except Exception as error:
@@ -218,6 +217,9 @@ class HapticsDesktopApp:
                     self._refresh_controls()
                     if not self.state.get().startswith("ERROR"):
                         self.state.set("Ready.")
+                    continue
+                if message.startswith("__NEXT_SESSION__:"):
+                    self.session.set(message.split(":", 1)[1])
                     continue
                 self.state.set(message)
                 self.log.configure(state="normal")

@@ -1,7 +1,7 @@
 window_size: 15
 sample_rate_hz: 30
 resample_hz: 60
-models: [random_forest, hist_gradient_boosting, mlp, catboost, torch_deep_mlp]
+models: [random_forest, hist_gradient_boosting, mlp, catboost]
 # Combine every processed game/session into one research dataset.
 include_all_games: true
 train_games: [f1_25, forza_horizon_5, assetto_corsa, mock]
@@ -9,12 +9,5 @@ test_game: null
 validation_strategy: random_row_split
 validation_fraction: 0.20
 random_seed: 25
-deep_learning:
-  device: cuda
-  require_cuda: true
-  epochs: 35
-  batch_size: 512
-  learning_rate: 0.001
-  hidden_layers: [192, 128, 64]
 feature_columns: []
 target_columns: []

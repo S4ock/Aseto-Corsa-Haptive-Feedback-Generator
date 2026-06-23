@@ -13,7 +13,7 @@ Official game telemetry
         ↓
 Normalized vehicle state + custom haptic labels
         ↓
-Classical ML / CUDA deep-learning training
+Classical ML training
         ↓
 Smoothed hybrid haptic mixer
         ↓
@@ -58,16 +58,7 @@ cd "C:\Users\user\OneDrive\Documents\dual sense"
 python -m pip install -r requirements.txt
 ```
 
-### Optional CUDA deep learning
-
-For an NVIDIA GPU, install the CUDA PyTorch wheel and verify it:
-
-```powershell
-python -m pip install -r requirements-cuda.txt
-python -c "import torch; print(torch.cuda.is_available()); print(torch.cuda.get_device_name(0))"
-```
-
-The configured trainer compares Random Forest, HistGradientBoosting, sklearn MLP, CatBoost, and a PyTorch deep MLP. It saves the best validation model automatically. CUDA is required when `torch_deep_mlp` remains in `config/training.yaml`.
+The configured trainer compares Random Forest, HistGradientBoosting, sklearn MLP, and CatBoost. It saves the best validation model automatically.
 
 ## Fast mock demo
 
@@ -148,7 +139,7 @@ For a simple Start/Stop desktop interface, run:
 python -m src.main_desktop_app
 ```
 
-Choose the game and model after the game has entered an offline driving session. You can run **Start recording** and **Start haptics** together: start recording first, then start haptics. The app shares that one telemetry stream with haptics, which is especially important for F1 UDP. Use the separate **Stop recording** and **Stop haptics** buttons; training requires both to be stopped.
+Choose the game and model after the game has entered an offline driving session. The editable session name automatically advances after each saved recording (for example, `session_001` to `session_002`); edit it whenever you want a different prefix or number. You can run **Start recording** and **Start haptics** together: start recording first, then start haptics. The app shares that one telemetry stream with haptics, which is especially important for F1 UDP. Use the separate **Stop recording** and **Stop haptics** buttons; training requires both to be stopped.
 
 To build a Windows app for distribution:
 
@@ -156,7 +147,7 @@ To build a Windows app for distribution:
 powershell -ExecutionPolicy Bypass -File scripts\build_windows_app.ps1
 ```
 
-The distributable is created under `dist\TelemetryDualSenseAI`. Use `-OneFile` to produce a single executable instead. The default build is a smaller CPU desktop app; use `-IncludeCuda` only when you deliberately need the much larger CUDA training build. A packaged release still needs the expected telemetry configuration and a trained model; direct USB haptics also requires `hidapi.dll`.
+The distributable is created under `dist\TelemetryDualSenseAI`. Use `-OneFile` to produce a single executable instead. A packaged release still needs the expected telemetry configuration and a trained model; direct USB haptics also requires `hidapi.dll`.
 
 ## USB DualSense motors and adaptive triggers
 

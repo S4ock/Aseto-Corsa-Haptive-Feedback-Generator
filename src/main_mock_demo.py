@@ -10,7 +10,6 @@ def main() -> None:
     for number in range(1, 4):
         record_session("mock", f"mock_demo_{number:03d}", max_packets=90)
     config = load_yaml("training.yaml")
-    # The demo stays CPU-only; CUDA training is an explicit optional workflow.
     config["models"] = ["random_forest", "hist_gradient_boosting", "mlp"]
     metrics = train(load_processed_sessions(), config)
     print(f"Demo model: {metrics['best_model']}")

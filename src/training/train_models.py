@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 import itertools
 from pathlib import Path
-from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -24,17 +23,6 @@ try:
     from catboost import CatBoostRegressor
 except ImportError:  # The rest of the research pipeline remains usable without it.
     CatBoostRegressor = None
-
-try:
-    import torch
-    from torch import nn
-    from torch.utils.data import DataLoader, TensorDataset
-except ImportError:  # CUDA/PyTorch is an optional accelerated model backend.
-    torch = None
-    nn = None
-    DataLoader = None
-    TensorDataset = None
-
 
 class PerOutputCatBoostRegressor:
     """CatBoost multi-output adapter that safely handles all-zero haptic targets."""
@@ -75,86 +63,7 @@ class PerOutputCatBoostRegressor:
         return np.mean(importances, axis=0) if importances else np.array([])
 
 
-class TorchDeepMLPRegressor:
-    """Portable PyTorch regressor: trains on CUDA, stores weights on CPU."""
-
-    def __init__(self, seed: int, config: dict[str, Any] | None = None):
-        self.seed = seed
-        self.config = config or {}
-        self.training_device = None
-
-    def fit(self, x, y):
-        if torch is None:
-            raise RuntimeError("PyTorch is unavailable. Install requirements-cuda.txt before training the CUDA model.")
-        requested_device = self.config.get("device", "cuda")
-        cuda_available = torch.cuda.is_available()
-        if requested_device == "cuda" and not cuda_available and self.config.get("require_cuda", True):
-            raise RuntimeError("CUDA was requested but PyTorch cannot see an NVIDIA CUDA device. Install the CUDA PyTorch wheel from requirements-cuda.txt.")
-        device = torch.device("cuda" if requested_device == "cuda" and cuda_available else "cpu")
-        self.training_device = str(device)
-        torch.manual_seed(self.seed)
-        if cuda_available:
-            torch.cuda.manual_seed_all(self.seed)
-        inputs = np.asarray(x, dtype=np.float32)
-        targets = np.asarray(y, dtype=np.float32)
-        self.input_size, self.output_size = inputs.shape[1], targets.shape[1]
-        model = self._build_model().to(device)
-        loader = DataLoader(
-            TensorDataset(torch.from_numpy(inputs), torch.from_numpy(targets)),
-            batch_size=max(32, int(self.config.get("batch_size", 512))), shuffle=True,
-            pin_memory=device.type == "cuda",
-        )
-        optimizer = torch.optim.AdamW(model.parameters(), lr=float(self.config.get("learning_rate", .001)), weight_decay=1e-5)
-        loss_fn = nn.SmoothL1Loss()
-        model.train()
-        for _epoch in range(max(1, int(self.config.get("epochs", 35)))):
-            for batch_x, batch_y in loader:
-                batch_x, batch_y = batch_x.to(device, non_blocking=True), batch_y.to(device, non_blocking=True)
-                optimizer.zero_grad(set_to_none=True)
-                loss_fn(model(batch_x), batch_y).backward()
-                optimizer.step()
-        # CPU state dict keeps joblib artefacts portable and avoids serializing GPU handles.
-        self.state_dict_ = {name: value.detach().cpu() for name, value in model.state_dict().items()}
-        self._inference_model = None
-        self._inference_device = None
-        return self
-
-    def predict(self, x):
-        if torch is None or not hasattr(self, "state_dict_"):
-            raise RuntimeError("CUDA model has not been fitted or PyTorch is unavailable.")
-        device = torch.device("cuda" if torch.cuda.is_available() and self.config.get("device", "cuda") == "cuda" else "cpu")
-        if getattr(self, "_inference_model", None) is None or self._inference_device != str(device):
-            model = self._build_model()
-            model.load_state_dict(self.state_dict_)
-            self._inference_model = model.to(device).eval()
-            self._inference_device = str(device)
-        model = self._inference_model
-        values = np.asarray(x, dtype=np.float32)
-        batches = []
-        with torch.no_grad():
-            for start in range(0, len(values), 4096):
-                batch = torch.from_numpy(values[start:start + 4096]).to(device)
-                batches.append(model(batch).cpu().numpy())
-        return np.vstack(batches)
-
-    def __getstate__(self):
-        state = self.__dict__.copy()
-        # Rebuild inference modules after loading; persist only CPU tensors.
-        state["_inference_model"] = None
-        state["_inference_device"] = None
-        return state
-
-    def _build_model(self):
-        layers: list[Any] = []
-        input_size = self.input_size
-        for width in self.config.get("hidden_layers", [192, 128, 64]):
-            layers.extend([nn.Linear(input_size, int(width)), nn.ReLU(), nn.LayerNorm(int(width)), nn.Dropout(.08)])
-            input_size = int(width)
-        layers.extend([nn.Linear(input_size, self.output_size), nn.Sigmoid()])
-        return nn.Sequential(*layers)
-
-
-def _models(seed: int, requested: list[str] | None = None, deep_learning: dict[str, Any] | None = None) -> dict:
+def _models(seed: int, requested: list[str] | None = None) -> dict:
     models = {
         "random_forest": RandomForestRegressor(n_estimators=80, min_samples_leaf=2, random_state=seed, n_jobs=-1),
         "hist_gradient_boosting": MultiOutputRegressor(HistGradientBoostingRegressor(max_iter=100, random_state=seed)),
@@ -162,8 +71,6 @@ def _models(seed: int, requested: list[str] | None = None, deep_learning: dict[s
     }
     if CatBoostRegressor is not None:
         models["catboost"] = PerOutputCatBoostRegressor(seed)
-    if torch is not None:
-        models["torch_deep_mlp"] = TorchDeepMLPRegressor(seed, deep_learning)
     requested = requested or list(models)
     unavailable = [name for name in requested if name not in models]
     if unavailable:
@@ -226,8 +133,7 @@ def train(frame: pd.DataFrame, config: dict, results_dir: str | Path = "results"
     x_valid = preprocessor.transform(x.loc[valid_mask])
     scores, fitted = {}, {}
     requested_models = list(config.get("models", ["random_forest", "hist_gradient_boosting", "mlp"]))
-    deep_learning = config.get("deep_learning", {})
-    for name, model in _models(int(config.get("random_seed", 25)), requested_models, deep_learning).items():
+    for name, model in _models(int(config.get("random_seed", 25)), requested_models).items():
         model.fit(x_fit, y.loc[fit_mask])
         scores[name] = float(mean_absolute_error(y.loc[valid_mask], model.predict(x_valid)))
         fitted[name] = model
@@ -238,7 +144,7 @@ def train(frame: pd.DataFrame, config: dict, results_dir: str | Path = "results"
     # Refit the selected model on all eligible training data for runtime use.
     final_preprocessor = Pipeline([("imputer", SimpleImputer(strategy="median")), ("scaler", StandardScaler())])
     x_all = final_preprocessor.fit_transform(x)
-    final_model = _models(int(config.get("random_seed", 25)), requested_models, deep_learning)[best_name].fit(x_all, y)
+    final_model = _models(int(config.get("random_seed", 25)), requested_models)[best_name].fit(x_all, y)
     test_game = config.get("test_game")
     test_mask = metadata["game"] == test_game if test_game else pd.Series(False, index=metadata.index)
     if test_game and test_mask.any() and not config.get("include_all_games", False):
