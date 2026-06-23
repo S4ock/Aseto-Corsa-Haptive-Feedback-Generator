@@ -14,7 +14,7 @@ from src.utils.safety import enforce_safe_mode, print_startup_warning
 from src.utils.time_utils import utc_now_iso
 
 
-def record_session(game: str, session_name: str, max_packets: int | None = None, stop_event=None) -> tuple[Path, Path]:
+def record_session(game: str, session_name: str, max_packets: int | None = None, stop_event=None, on_telemetry=None) -> tuple[Path, Path]:
     games_config, haptics_config = load_yaml("games.yaml"), load_yaml("haptics.yaml")
     enforce_safe_mode(games_config, game)
     print_startup_warning()
@@ -39,6 +39,12 @@ def record_session(game: str, session_name: str, max_packets: int | None = None,
                 raw_file.write(json.dumps(packet, default=str) + "\n")
                 row = adapter.normalize_packet(packet)
                 row.update(rules.label(row))
+                if on_telemetry is not None:
+                    try:
+                        on_telemetry(row)
+                    except Exception as error:
+                        # Haptic output must never prevent a recording from being saved.
+                        print(f"Live haptics callback failed ({error}); continuing recording.")
                 rows.append(row); count += 1
                 elapsed = max(time.monotonic() - start, .001)
                 print(f"packet={count} rate={count/elapsed:.1f}/s speed={row['speed_kmh']:.1f} rpm={row['rpm']:.0f} throttle={row['throttle']:.2f} brake={row['brake']:.2f} steering={row['steering']:.2f} haptic={row['haptic_event']}")

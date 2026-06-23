@@ -148,7 +148,7 @@ For a simple Start/Stop desktop interface, run:
 python -m src.main_desktop_app
 ```
 
-Choose the game and model, then use **Start recording**, **Train model**, or **Start haptics** after the game has entered an offline driving session. Press **Stop current action** to safely finish recording or haptics.
+Choose the game and model after the game has entered an offline driving session. You can run **Start recording** and **Start haptics** together: start recording first, then start haptics. The app shares that one telemetry stream with haptics, which is especially important for F1 UDP. Use the separate **Stop recording** and **Stop haptics** buttons; training requires both to be stopped.
 
 To build a Windows app for distribution:
 

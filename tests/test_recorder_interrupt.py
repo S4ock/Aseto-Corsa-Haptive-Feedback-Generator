@@ -31,3 +31,14 @@ def test_ctrl_c_saves_recorded_rows(tmp_path, monkeypatch):
     assert len(pd.read_csv(processed_path)) == 1
     metadata = json.loads((tmp_path / "data/raw/interrupt_test_metadata.json").read_text())
     assert metadata["stopped_by_user"] is True
+
+
+def test_recording_can_forward_normalized_telemetry_without_blocking_save(tmp_path, monkeypatch):
+    seen = []
+    monkeypatch.setattr(recorder, "ROOT", tmp_path)
+    monkeypatch.setattr(recorder, "load_yaml", lambda name: {"safe_mode": True, "recorder": {"max_packets": 50, "timeout_seconds": 10}, "mock": {}} if name == "games.yaml" else {})
+    monkeypatch.setattr(recorder, "create_adapter", lambda *args: InterruptingAdapter())
+    _, processed_path = recorder.record_session("mock", "forwarding_test", on_telemetry=seen.append)
+    assert processed_path.exists()
+    assert len(seen) == 1
+    assert seen[0]["speed_kmh"] == 100
