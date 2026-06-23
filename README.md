@@ -140,13 +140,15 @@ Disable any in-game controller rumble when evaluating the project’s custom fee
 
 ## Desktop app and Windows download build
 
+Windows users can download `TelemetryDualSenseAI-windows.zip` from this repository's **Releases** page, extract the whole ZIP, and double-click `TelemetryDualSenseAI.exe`. Do not run it from inside the ZIP. The app keeps new recordings, trained models, and reports next to the executable.
+
 For a simple Start/Stop desktop interface, run:
 
 ```powershell
 python -m src.main_desktop_app
 ```
 
-Choose the game and model, then press **Start haptics** after the game has entered an offline driving session. Press **Stop** to close the haptic runtime safely.
+Choose the game and model, then use **Start recording**, **Train model**, or **Start haptics** after the game has entered an offline driving session. Press **Stop current action** to safely finish recording or haptics.
 
 To build a Windows app for distribution:
 
@@ -154,7 +156,7 @@ To build a Windows app for distribution:
 powershell -ExecutionPolicy Bypass -File scripts\build_windows_app.ps1
 ```
 
-The distributable is created under `dist\TelemetryDualSenseAI`. Use `-OneFile` to produce a single executable instead. A packaged release still needs the expected telemetry configuration and a trained model; direct USB haptics also requires `hidapi.dll`.
+The distributable is created under `dist\TelemetryDualSenseAI`. Use `-OneFile` to produce a single executable instead. The default build is a smaller CPU desktop app; use `-IncludeCuda` only when you deliberately need the much larger CUDA training build. A packaged release still needs the expected telemetry configuration and a trained model; direct USB haptics also requires `hidapi.dll`.
 
 ## USB DualSense vibration
 

@@ -14,7 +14,7 @@ from src.utils.safety import enforce_safe_mode, print_startup_warning
 from src.utils.time_utils import utc_now_iso
 
 
-def record_session(game: str, session_name: str, max_packets: int | None = None) -> tuple[Path, Path]:
+def record_session(game: str, session_name: str, max_packets: int | None = None, stop_event=None) -> tuple[Path, Path]:
     games_config, haptics_config = load_yaml("games.yaml"), load_yaml("haptics.yaml")
     enforce_safe_mode(games_config, game)
     print_startup_warning()
@@ -32,7 +32,7 @@ def record_session(game: str, session_name: str, max_packets: int | None = None)
     try:
         adapter.connect()
         with raw_path.open("w", encoding="utf-8") as raw_file:
-            while count < limit and time.monotonic() - start < timeout:
+            while (stop_event is None or not stop_event.is_set()) and count < limit and time.monotonic() - start < timeout:
                 packet = adapter.read_packet()
                 if packet is None:
                     continue
@@ -48,6 +48,7 @@ def record_session(game: str, session_name: str, max_packets: int | None = None)
         print("Stopping recorder safely; saving captured packets...")
     finally:
         adapter.close()
+    interrupted = interrupted or (stop_event is not None and stop_event.is_set())
     if not rows:
         raise RuntimeError("No telemetry packets received. Check official telemetry settings or use --game mock.")
     processed_frame = pd.DataFrame(rows)
