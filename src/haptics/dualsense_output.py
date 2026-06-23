@@ -1,9 +1,8 @@
-"""USB DualSense vibration output using Pygame's physical-controller rumble API.
+"""USB DualSense haptic output using physical-controller APIs.
 
 This module sends vibration only. It never creates a virtual controller, reads
-controller axes/buttons, or sends gameplay inputs. Adaptive triggers remain out
-of scope for this portable output path because Pygame exposes no standard API
-for them.
+controller axes/buttons, or sends gameplay inputs. The direct USB backend can
+also apply output-only adaptive-trigger resistance; Pygame remains motor-only.
 """
 from __future__ import annotations
 
@@ -94,7 +93,8 @@ class DirectHidDualSenseOutput(HapticOutput):
 
     No callbacks or controller state are registered/read by this application.
     The library's transport handles the device connection; this class only sets
-    its left/right rumble output values and resets them on shutdown.
+    its left/right rumble and adaptive-trigger output values and resets them on
+    shutdown. It never subscribes to or forwards controller inputs.
     """
 
     def __init__(self, config: dict[str, Any] | None = None, controller_class=None):
@@ -104,7 +104,14 @@ class DirectHidDualSenseOutput(HapticOutput):
         self.available = False
         self.fallback = StubOutput()
         self.keepalive_hz = max(20.0, min(250.0, float(config.get("rumble_keepalive_hz", 120))))
+        self.adaptive_triggers = bool(config.get("adaptive_triggers", True))
+        self.trigger_start_position = max(0, min(9, int(config.get("trigger_start_position", 1))))
+        self.trigger_min_strength = max(1, min(8, int(config.get("trigger_min_strength", 1))))
+        self.trigger_max_strength = max(self.trigger_min_strength, min(8, int(config.get("trigger_max_strength", 8))))
+        self.trigger_pulse_gain = _clamp(config.get("trigger_pulse_gain", .65))
         self._left, self._right = 0.0, 0.0
+        self._left_trigger, self._right_trigger = 0.0, 0.0
+        self._trigger_supported = False
         self._lock = threading.Lock()
         self._worker_stop = threading.Event()
         self._worker: threading.Thread | None = None
@@ -120,10 +127,15 @@ class DirectHidDualSenseOutput(HapticOutput):
             self.controller = self._controller_class(device_index_or_device_info=devices[0])
             self.controller.activate()
             self.available = True
+            self._trigger_supported = self.adaptive_triggers and all(
+                hasattr(getattr(self.controller, side, None), "effect")
+                for side in ("left_trigger", "right_trigger")
+            )
             self._worker_stop.clear()
             self._worker = threading.Thread(target=self._keepalive_loop, name="dualsense-haptics", daemon=True)
             self._worker.start()
-            print("Direct USB DualSense haptics connected.")
+            trigger_status = "adaptive triggers enabled" if self._trigger_supported else "motor-only (adaptive triggers unavailable or disabled)"
+            print(f"Direct USB DualSense haptics connected: {trigger_status}.")
         except Exception as error:
             print(f"Direct USB DualSense haptics unavailable ({error}); using stub output.")
             self.fallback.connect()
@@ -136,6 +148,16 @@ class DirectHidDualSenseOutput(HapticOutput):
             with self._lock:
                 self._left = _clamp(feedback_dict.get("vibration_left", 0.0))
                 self._right = _clamp(feedback_dict.get("vibration_right", 0.0))
+                self._left_trigger = _trigger_intensity(
+                    feedback_dict.get("left_trigger_resistance", 0.0),
+                    feedback_dict.get("left_trigger_pulse", 0.0),
+                    self.trigger_pulse_gain,
+                )
+                self._right_trigger = _trigger_intensity(
+                    feedback_dict.get("right_trigger_resistance", 0.0),
+                    feedback_dict.get("right_trigger_pulse", 0.0),
+                    self.trigger_pulse_gain,
+                )
             self._write_current_output()
         except Exception as error:
             print(f"Direct USB haptics failed ({error}); using stub output.")
@@ -147,6 +169,7 @@ class DirectHidDualSenseOutput(HapticOutput):
             try:
                 with self._lock:
                     self._left, self._right = 0.0, 0.0
+                    self._left_trigger, self._right_trigger = 0.0, 0.0
                 self._write_current_output()
             except Exception:
                 pass
@@ -177,8 +200,25 @@ class DirectHidDualSenseOutput(HapticOutput):
             return
         with self._lock:
             left, right = self._left, self._right
+            left_trigger, right_trigger = self._left_trigger, self._right_trigger
         self.controller.left_rumble.set(round(left * 255))
         self.controller.right_rumble.set(round(right * 255))
+        if self._trigger_supported:
+            self._write_trigger_effect(self.controller.left_trigger.effect, left_trigger)
+            self._write_trigger_effect(self.controller.right_trigger.effect, right_trigger)
+
+    def _write_trigger_effect(self, effect, intensity: float) -> None:
+        """Use the library's official trigger-feedback mode, not input emulation."""
+        if intensity <= 0.0:
+            effect.off()
+            return
+        strength = int(self.trigger_min_strength + intensity * (self.trigger_max_strength - self.trigger_min_strength) + .5)
+        effect.feedback(start_position=self.trigger_start_position, strength=max(1, min(8, strength)))
+
+
+def _trigger_intensity(resistance: Any, pulse: Any, pulse_gain: float) -> float:
+    """Combine learned resistance with a bounded ABS/traction pulse boost."""
+    return _clamp(max(_clamp(resistance), _clamp(pulse) * pulse_gain))
 
 
 def _create_direct_hid(config: dict[str, Any]) -> HapticOutput:

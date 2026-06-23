@@ -2,7 +2,7 @@
 
 **Official telemetry in. Custom research haptics out.**
 
-TelemetryDualSenseAI is an offline research prototype for accessibility and immersion. It reads supported racing-game telemetry, builds transparent custom haptic labels, trains prediction models, and sends optional left/right USB DualSense vibration during offline driving.
+TelemetryDualSenseAI is an offline research prototype for accessibility and immersion. It reads supported racing-game telemetry, builds transparent custom haptic labels, trains prediction models, and sends optional USB DualSense vibration and adaptive-trigger resistance during offline driving.
 
 > **Use this only offline/single-player/time-trial. This tool does not modify gameplay inputs.**
 
@@ -17,12 +17,12 @@ Classical ML / CUDA deep-learning training
         ↓
 Smoothed hybrid haptic mixer
         ↓
-USB DualSense vibration or safe terminal stub output
+USB DualSense motors + adaptive triggers or safe terminal stub output
 ```
 
 The project predicts these normalized `0.0–1.0` targets:
 
-- left/right trigger resistance and pulses (recorded/trained targets; physical triggers are not yet enabled)
+- left/right trigger resistance and pulses (recorded/trained targets; applied through direct USB output)
 - left/right vibration motor strength
 - vibration frequency
 - haptic events: `wheel_slip`, `off_track`, and `collision`
@@ -136,7 +136,7 @@ python -m src.main_runtime --game assetto_corsa --model models\best_model.pkl --
 
 Runtime continues until `Ctrl+C`. It uses a fixed 60 Hz inference cadence, holds the last prediction between updates, and mixes continuous RPM/road feedback with wheel-slip and collision overlays using attack/release envelopes.
 
-Disable any in-game controller rumble when evaluating the project’s custom feedback, otherwise the game may compete for the controller’s motors.
+Disable any in-game controller rumble when evaluating the project’s custom feedback, otherwise the game may compete for the controller’s motors and adaptive triggers.
 
 ## Desktop app and Windows download build
 
@@ -158,22 +158,23 @@ powershell -ExecutionPolicy Bypass -File scripts\build_windows_app.ps1
 
 The distributable is created under `dist\TelemetryDualSenseAI`. Use `-OneFile` to produce a single executable instead. The default build is a smaller CPU desktop app; use `-IncludeCuda` only when you deliberately need the much larger CUDA training build. A packaged release still needs the expected telemetry configuration and a trained model; direct USB haptics also requires `hidapi.dll`.
 
-## USB DualSense vibration
+## USB DualSense motors and adaptive triggers
 
-`--output stub` is always safe and only prints haptic values. `--output dualsense` prefers a direct USB HID backend that sends only left/right vibration strengths—no virtual controller and no gameplay inputs.
+`--output stub` is always safe and only prints haptic values. `--output dualsense` prefers a direct USB HID backend that sends only left/right vibration strengths and adaptive-trigger effects—no virtual controller and no gameplay inputs.
 
 For direct USB output on Windows:
 
 1. Install `requirements.txt`.
 2. Download the 64-bit `hidapi.dll` from the [HIDAPI releases](https://github.com/libusb/hidapi/releases).
 3. Place it in the project root as `hidapi.dll`.
-4. Test without a game running:
+4. Keep the controller connected by **USB**. Bluetooth and the Pygame fallback are motor-only; adaptive triggers require the direct USB HID backend.
+5. Test without a game running:
 
 ```powershell
 python -m src.main_dualsense_test
 ```
 
-The current portable output path enables vibration motors only. Physical adaptive-trigger effects are not yet enabled.
+The test runs left/right motor checks followed by left/right trigger-resistance checks. The default `config/games.yaml` settings enable adaptive triggers and map the trained left trigger target to brake/ABS resistance and the right trigger target to throttle/traction-slip resistance. You can tune `trigger_start_position`, `trigger_min_strength`, `trigger_max_strength`, and `trigger_pulse_gain` in that file. Set `adaptive_triggers: false` to keep motor feedback while disabling trigger effects.
 
 ## Research evidence report
 

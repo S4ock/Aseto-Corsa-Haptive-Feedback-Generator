@@ -4,6 +4,12 @@ dualsense:
   # direct_hid is intended to coexist with games that read controller input.
   backend: direct_hid
   rumble_keepalive_hz: 120
+  # Output-only USB DualSense adaptive-trigger resistance.
+  adaptive_triggers: true
+  trigger_start_position: 1
+  trigger_min_strength: 1
+  trigger_max_strength: 8
+  trigger_pulse_gain: 0.65
   # Used only by the optional pygame fallback backend.
   name_contains: "Wireless Controller"
   rumble_duration_ms: 120
