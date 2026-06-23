@@ -1,0 +1,22 @@
+# Generated research artefacts (keep directory markers only)
+data/raw/*
+!data/raw/.gitkeep
+data/processed/*
+!data/processed/.gitkeep
+data/mock/*
+!data/mock/.gitkeep
+models/*
+!models/.gitkeep
+results/*
+!results/.gitkeep
+
+__pycache__/
+.pytest_cache/
+*.pyc
+.venv/
+venv/
+catboost_info/
+hidapi.dll
+dist/
+build/
+*.spec

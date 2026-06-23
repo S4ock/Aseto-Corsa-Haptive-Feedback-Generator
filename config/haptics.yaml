@@ -1,0 +1,19 @@
+brake_resistance_threshold: 0.55
+abs_pulse_threshold: 0.12
+wheel_slip_threshold: 0.35
+collision_vibration_threshold: 0.15
+rpm_vibration_threshold: 0.72
+smoothing_factor: 0.35
+max_trigger_resistance: 1.0
+max_vibration: 1.0
+runtime_mixer:
+  enabled: true
+  engine_gain: 0.18
+  moving_vibration_floor: 0.04
+  rough_surface_gain: 0.48
+  wheel_slip_gain: 0.38
+  wheel_pulse_hz: 12.0
+  collision_duration_seconds: 0.35
+  collision_gain: 1.0
+  attack_ms: 40
+  release_ms: 200
