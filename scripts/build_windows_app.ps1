@@ -12,6 +12,7 @@ if (-not $IncludeCuda) {
     $arguments += @('--exclude-module', 'torch', '--exclude-module', 'torchvision', '--exclude-module', 'triton')
 }
 if (Test-Path -LiteralPath 'models\best_model.pkl') { $arguments += @('--add-data', 'models\best_model.pkl;models') }
+if (Test-Path -LiteralPath 'models\preprocessor.pkl') { $arguments += @('--add-data', 'models\preprocessor.pkl;models') }
 if (Test-Path -LiteralPath 'hidapi.dll') { $arguments += @('--add-binary', 'hidapi.dll;.') }
 if ($OneFile) { $arguments += '--onefile' }
 $arguments += 'src\main_desktop_app.py'
