@@ -45,9 +45,13 @@ If telemetry or hardware output is unavailable, the application fails safely or 
 |---|---|---|
 | F1 with UDP Format 2026 | Working | Reads official car telemetry plus collision events. Configure it as `f1_25` in this project. |
 | Original Assetto Corsa (Windows) | Working | Reads documented `Local\acpmf_physics` telemetry, including inferred collision events from published damage values. |
+| BeamNG.drive | Working | Reads configured OutGauge UDP telemetry for custom haptics. |
+| Live for Speed | Working | Reads configured OutGauge UDP telemetry for custom haptics. |
 | Mock mode | Working | Full no-game pipeline for development/testing. |
 | Forza Horizon 5 | Receiver only | Receives configured Data Out UDP, but binary field decoding is not implemented yet. |
 | Assetto Corsa Competizione | Unsupported | Uses a different telemetry interface. |
+
+For BeamNG.drive or Live for Speed, enable/configure its OutGauge telemetry output to send UDP to the host and port in `config/games.yaml` (defaults: BeamNG `127.0.0.1:4444`, LFS `127.0.0.1:30000`).
 
 ## Setup
 

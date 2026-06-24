@@ -49,7 +49,7 @@ def run_runtime(game: str, model_path: str, output_mode: str = "stub", max_packe
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Predict output-only haptic feedback from read-only telemetry.")
-    parser.add_argument("--game", required=True, choices=["f1_25", "forza_horizon_5", "assetto_corsa", "mock"])
+    parser.add_argument("--game", required=True, choices=["f1_25", "forza_horizon_5", "assetto_corsa", "beamng_drive", "live_for_speed", "mock"])
     parser.add_argument("--model", default="models/best_model.pkl")
     parser.add_argument("--output", choices=["stub", "dualsense"], default="stub")
     parser.add_argument("--max-packets", type=int, default=None, help="Optional packet cap; omit to run until Ctrl+C.")

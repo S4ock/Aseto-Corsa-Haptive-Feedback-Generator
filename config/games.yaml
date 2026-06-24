@@ -34,6 +34,16 @@ assetto_corsa:
   max_steering_angle_rad: 0.6
   wheel_slip_scale: 1.0
   collision_damage_delta_threshold: 0.01
+beamng_drive:
+  host: 127.0.0.1
+  port: 4444
+  protocol: official_outgauge_udp
+  max_rpm: 9000
+live_for_speed:
+  host: 127.0.0.1
+  port: 30000
+  protocol: official_outgauge_udp
+  max_rpm: 9000
 mock:
   sample_rate_hz: 30
   seed: 25

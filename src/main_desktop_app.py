@@ -26,6 +26,8 @@ class HapticsDesktopApp:
         self.root = root
         self.root.title("TelemetryDualSenseAI")
         self.root.resizable(False, False)
+        self.root.configure(background="#101827")
+        self._configure_style()
         self.messages: queue.Queue[str] = queue.Queue()
         self.record_stop_event: threading.Event | None = None
         self.runtime_stop_event: threading.Event | None = None
@@ -44,13 +46,13 @@ class HapticsDesktopApp:
         self._poll_messages()
 
     def _build(self) -> None:
-        frame = ttk.Frame(self.root, padding=18)
+        frame = ttk.Frame(self.root, padding=22, style="App.TFrame")
         frame.grid(sticky="nsew")
-        ttk.Label(frame, text="TelemetryDualSenseAI", font=("Segoe UI", 18, "bold")).grid(row=0, column=0, columnspan=4, sticky="w")
-        ttk.Label(frame, text="Record telemetry, train a model, and run custom USB DualSense haptics.").grid(row=1, column=0, columnspan=4, sticky="w")
-        ttk.Label(frame, text=OFFLINE_WARNING, foreground="#9c1c1c", wraplength=600).grid(row=2, column=0, columnspan=4, sticky="w", pady=(8, 14))
+        ttk.Label(frame, text="TelemetryDualSenseAI", style="Title.TLabel").grid(row=0, column=0, columnspan=4, sticky="w")
+        ttk.Label(frame, text="Offline telemetry research • custom motors and adaptive triggers", style="Subtitle.TLabel").grid(row=1, column=0, columnspan=4, sticky="w", pady=(2, 0))
+        ttk.Label(frame, text=OFFLINE_WARNING, style="Warning.TLabel", wraplength=650).grid(row=2, column=0, columnspan=4, sticky="ew", pady=(14, 16), ipadx=10, ipady=8)
         ttk.Label(frame, text="Game").grid(row=3, column=0, sticky="w")
-        ttk.Combobox(frame, textvariable=self.game, values=("assetto_corsa", "f1_25"), state="readonly", width=38).grid(row=3, column=1, columnspan=3, sticky="ew", padx=(10, 0))
+        ttk.Combobox(frame, textvariable=self.game, values=("assetto_corsa", "f1_25", "beamng_drive", "live_for_speed"), state="readonly", width=38).grid(row=3, column=1, columnspan=3, sticky="ew", padx=(10, 0))
         ttk.Label(frame, text="Session name").grid(row=4, column=0, sticky="w", pady=(8, 0))
         ttk.Entry(frame, textvariable=self.session, width=44).grid(row=4, column=1, columnspan=3, sticky="ew", padx=(10, 0), pady=(8, 0))
         ttk.Label(frame, text="Trained model").grid(row=5, column=0, sticky="w", pady=(8, 0))
@@ -67,9 +69,22 @@ class HapticsDesktopApp:
         self.train_button = ttk.Button(frame, text="Train model", command=self._start_training)
         self.train_button.grid(row=7, column=0, columnspan=4, sticky="ew", pady=(8, 0))
         ttk.Label(frame, textvariable=self.state, wraplength=600).grid(row=8, column=0, columnspan=4, sticky="w", pady=(14, 6))
-        self.log = tk.Text(frame, width=84, height=10, state="disabled", wrap="word")
+        self.log = tk.Text(frame, width=84, height=10, state="disabled", wrap="word", background="#0b1220", foreground="#d1d5db", insertbackground="#ffffff", relief="flat", padx=10, pady=8)
         self.log.grid(row=9, column=0, columnspan=4, sticky="ew")
         ttk.Label(frame, text="Recording and haptics may run together. Stop each independently. Training requires both to be stopped. This app never sends gameplay inputs.", foreground="#555555", wraplength=600).grid(row=10, column=0, columnspan=4, sticky="w", pady=(8, 0))
+
+    def _configure_style(self) -> None:
+        style = ttk.Style(self.root)
+        style.theme_use("clam")
+        style.configure("App.TFrame", background="#101827")
+        style.configure("TLabel", background="#101827", foreground="#e5e7eb", font=("Segoe UI", 10))
+        style.configure("Title.TLabel", background="#101827", foreground="#f8fafc", font=("Segoe UI", 20, "bold"))
+        style.configure("Subtitle.TLabel", background="#101827", foreground="#94a3b8", font=("Segoe UI", 10))
+        style.configure("Warning.TLabel", background="#3f1d23", foreground="#fecaca", font=("Segoe UI", 9))
+        style.configure("TButton", background="#2563eb", foreground="#ffffff", padding=(10, 7), font=("Segoe UI", 9, "bold"))
+        style.map("TButton", background=[("active", "#3b82f6"), ("disabled", "#334155")], foreground=[("disabled", "#94a3b8")])
+        style.configure("TEntry", fieldbackground="#f8fafc", foreground="#111827", padding=5)
+        style.configure("TCombobox", fieldbackground="#f8fafc", foreground="#111827", padding=4)
 
     def _browse(self) -> None:
         filename = filedialog.askopenfilename(title="Choose trained model", initialdir=ROOT / "models", filetypes=[("Model", "*.pkl")])

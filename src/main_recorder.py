@@ -75,7 +75,7 @@ def record_session(game: str, session_name: str, max_packets: int | None = None,
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Record official telemetry and rule-generated haptic labels.")
-    parser.add_argument("--game", required=True, choices=["f1_25", "forza_horizon_5", "assetto_corsa", "mock"])
+    parser.add_argument("--game", required=True, choices=["f1_25", "forza_horizon_5", "assetto_corsa", "beamng_drive", "live_for_speed", "mock"])
     parser.add_argument("--session-name", required=True)
     parser.add_argument("--max-packets", type=int, default=None)
     args = parser.parse_args()
